@@ -2242,7 +2242,11 @@
         "updating": "Updating",
         "updateAll": "Update all",
         "title": "Servers",
-        "restartNote": "Updating restarts these servers."
+        "otherCount": "{{value0}} other",
+        "confirmOne": "Restart {{name}}?",
+        "confirmMany": "Restart {{count}} servers?",
+        "liveMayDrop": "Live sessions may drop.",
+        "cancel": "Cancel"
       },
       "action": {
         "update": "Update",
@@ -2265,7 +2269,6 @@
         "held": "{{version}} on hold",
         "available": "{{version}} available",
         "latestForMac": "Latest for this Mac",
-        "downloading": "Downloading {{version}}",
         "ready": "{{version}} ready",
         "installing": "Installing {{version}}…",
         "installOnQuit": "Quit to install",
@@ -2281,7 +2284,8 @@
         "downloadProgress": "Download progress",
         "copyDetails": "Copy details",
         "copied": "Copied",
-        "copyFailed": "Could not copy details."
+        "copyFailed": "Could not copy details.",
+        "downloadingPercent": "Downloading {{percent}}"
       }
     }
   },
