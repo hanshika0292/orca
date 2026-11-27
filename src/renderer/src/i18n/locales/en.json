@@ -2250,6 +2250,7 @@
         "restartOne": "Restart?",
         "updateOne": "Update {{name}}",
         "retryOne": "Retry {{name}}",
+        "retryAll": "Retry all",
         "updatingCount": "{{value0}} updating",
         "failedCount": "{{value0}} failed",
         "failed": "Failed"
@@ -2257,7 +2258,6 @@
       "action": {
         "update": "Update",
         "check": "Check",
-        "skip": "Skip",
         "retry": "Retry",
         "skipDelay": "Skip delay",
         "restart": "Restart",
@@ -2280,6 +2280,7 @@
         "installing": "Installing {{version}}…",
         "installOnQuit": "Quit to install",
         "installBlocked": "Install blocked",
+        "blocked": "Blocked",
         "updateFailed": "Update failed",
         "checkFailed": "Check failed",
         "failed": "Failed",
@@ -2291,7 +2292,8 @@
         "copyDetails": "Copy details",
         "copied": "Copied",
         "copyFailed": "Could not copy details.",
-        "downloadingPercent": "Downloading {{percent}}"
+        "downloadingPercent": "Downloading {{percent}}",
+        "browserBlockGuidance": "End the browser process (PID {{pids}}), then retry. Its server keeps running."
       }
     }
   },
