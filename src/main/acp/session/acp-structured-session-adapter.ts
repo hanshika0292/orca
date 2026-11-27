@@ -69,7 +69,10 @@ export class AcpStructuredSessionAdapter implements SessionAdapter {
 
   async acquire(input: StructuredAgentSessionAcquireInput): Promise<AgentSessionAcquisition> {
     const sessionId = input.identity.sessionId
-    const gate = this.deps.spec.launchGate?.enter(input.signal)
+    const { launchGate, launchAccount } = this.deps.spec
+    const gate = await launchGate?.admit(input.signal)
+    // Inside the gate, so an account change that begins later waits for this child.
+    const accountKey = launchAccount?.atLaunch()
     const attempt = this.children.starts.begin(gate?.signal ?? input.signal)
     try {
       if (!(await this.children.stop(sessionId))) {
@@ -79,7 +82,7 @@ export class AcpStructuredSessionAdapter implements SessionAdapter {
           )
         )
       }
-      return await startAcpStructuredSession(
+      const acquired = await startAcpStructuredSession(
         this.deps,
         this.children,
         { ...input, signal: attempt.signal },
@@ -87,6 +90,7 @@ export class AcpStructuredSessionAdapter implements SessionAdapter {
         this.now,
         this.graceMs
       )
+      return accountKey === undefined ? acquired : { ...acquired, accountKey }
     } catch (error) {
       throw acpAcquireFailure(error)
     } finally {
@@ -184,6 +188,9 @@ export class AcpStructuredSessionAdapter implements SessionAdapter {
   awaitStoppedRequestEnd = stop.requestEndWait((id) => this.children.sessions.get(id), this.graceMs)
 
   settlePermissionTransition = stop.acpPermissionTransition((id) => this.live(id), this.graceMs)
+
+  launchAccountKey: NonNullable<SessionAdapter['launchAccountKey']> = () =>
+    this.deps.spec.launchAccount?.current() ?? null
 
   permissionModeRequiresAcquisition: NonNullable<
     SessionAdapter['permissionModeRequiresAcquisition']

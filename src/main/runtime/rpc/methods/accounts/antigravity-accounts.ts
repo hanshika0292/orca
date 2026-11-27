@@ -1,4 +1,4 @@
-import { isAbsolute, join } from 'node:path'
+import { isAbsolute } from 'node:path'
 import { defineMethod, defineStreamingMethod, type RpcContext } from '../../core'
 import { rpcCallerOperationKey } from '../../callers/rpc-caller-identity'
 import type { OrcaRuntimeService } from '../../../orca-runtime'
@@ -12,25 +12,14 @@ import {
 } from '../../../../../shared/rpc-contract/accounts/antigravity-accounts-params'
 import { AntigravityChatAuthConfigSchema } from '../../../../../shared/agent-accounts/antigravity/antigravity-chat-auth-config'
 import { getAntigravityAccountService } from '../../../../antigravity/native-account-host'
-import { antigravityAgyOrcaAccountHome } from '../../../../antigravity/antigravity-agy-orca-home'
-import { ANTIGRAVITY_CHAT_HOME_FOLDER } from '../../../../antigravity/antigravity-chat-home'
-import { agentModelCatalogFingerprint } from '../../../../native-chat/agent-model-catalog/agent-model-catalog-fingerprint'
-import { agentModelCatalogStore } from '../../../../native-chat/agent-model-catalog/agent-model-catalog-store'
-import {
-  readAgySignInInBackground,
-  restartIdleAgyChats,
-  sharedAgyLaunchHome,
-  withAntigravityChatBackend
-} from './antigravity-chat-backend'
+import { readAgySignInInBackground } from './antigravity-chat-backend'
+import { accountRows, forgetAgyLogin } from './agy-login-change'
+import { AGY_HOST_ACCOUNT_SWITCH } from '../../../../antigravity/agy-account-switch'
 import {
   lastAntigravityAgySignedOut,
-  noteAgyLoginChanged,
   onAntigravityChatApiKeyChanged
 } from '../../../../antigravity/antigravity-chat-route'
-import {
-  antigravityHostCatalogFingerprints,
-  readyAntigravityHostAcpVersion
-} from '../../../../antigravity/antigravity-host-acp'
+import { readyAntigravityHostAcpVersion } from '../../../../antigravity/antigravity-host-acp'
 import {
   cancelAntigravityChatSignIn,
   completeAntigravityChatSignIn,
@@ -90,36 +79,6 @@ function detectChatAuth(runtime: OrcaRuntimeService) {
   })
 }
 
-function antigravityOrcaHomeCatalogFingerprints(): string[] {
-  const data = getProfileUserDataPath()
-  return [
-    antigravityAgyOrcaAccountHome(data),
-    { variable: 'GEMINI_HOME', path: join(data, ANTIGRAVITY_CHAT_HOME_FOLDER) }
-  ].map((accountHome) =>
-    agentModelCatalogFingerprint({ agent: 'antigravity', accountHome, wslDistro: null })
-  )
-}
-
-/** What agy's own login served: the model lists taken with it, the chats running on it, and the
- *  checks that vouched for it. The catalog of the HOME chats launch with goes once that is known. */
-function forgetAgyLogin(runtime: OrcaRuntimeService): void {
-  noteAgyLoginChanged()
-  const launchHome = sharedAgyLaunchHome(runtime)
-  // Orca's homes list with agy's Google login too (Enterprise, the retired server's chats).
-  const own = [...antigravityHostCatalogFingerprints(), ...antigravityOrcaHomeCatalogFingerprints()]
-  agentModelCatalogStore.forgetSeenRows(own)
-  // A listing started after the change, such as a Refresh, is already the new login's.
-  const before = agentModelCatalogStore.runningListings()
-  void launchHome.then((home) => {
-    const launch = home ? antigravityHostCatalogFingerprints(home) : []
-    agentModelCatalogStore.forgetSeenRows(
-      launch.filter((key) => !own.includes(key)),
-      before
-    )
-  })
-  restartIdleAgyChats({ runtime: 'host' })
-}
-
 /** Signs agy in where chats on agy's own home run it, with their environment. */
 const agySignInHost = (runtime: OrcaRuntimeService): AntigravityChatSignInHost => ({
   agy: async () => {
@@ -172,7 +131,7 @@ export const ANTIGRAVITY_ACCOUNT_METHODS = [
     permission: 'workspace',
     params: AntigravityAccountTargetParams,
     handler: async (target, ctx) =>
-      withAntigravityChatBackend(
+      accountRows(
         ctx.runtime,
         target,
         await (await getAntigravityAccountService(target)).listAccounts()
@@ -183,7 +142,7 @@ export const ANTIGRAVITY_ACCOUNT_METHODS = [
     permission: 'accounts-admin',
     params: AntigravityAccountTargetParams,
     handler: async (target, ctx) =>
-      withAntigravityChatBackend(
+      accountRows(
         ctx.runtime,
         target,
         await (await getAntigravityAccountService(target)).addCurrentAccount()
@@ -195,15 +154,14 @@ export const ANTIGRAVITY_ACCOUNT_METHODS = [
     params: AntigravityAccountMutationParams,
     handler: async ({ target, accountId }, ctx) => {
       const service = await getAntigravityAccountService(target)
-      let switched = false
-      const state = await service.selectAccount(accountId, () => (switched = true))
       // Chats run only on the host's agy; what they listed belongs to the previous account.
-      if (target.runtime === 'host' && switched) {
-        forgetAgyLogin(ctx.runtime)
-      } else {
-        restartIdleAgyChats(target)
-      }
-      return withAntigravityChatBackend(ctx.runtime, target, state)
+      const state =
+        target.runtime === 'host'
+          ? await AGY_HOST_ACCOUNT_SWITCH.select(service, accountId, () =>
+              forgetAgyLogin(ctx.runtime)
+            )
+          : await service.selectAccount(accountId)
+      return accountRows(ctx.runtime, target, state)
     }
   }),
   defineMethod({
@@ -211,7 +169,7 @@ export const ANTIGRAVITY_ACCOUNT_METHODS = [
     permission: 'accounts-admin',
     params: AntigravityAccountMutationParams,
     handler: async ({ target, accountId }, ctx) =>
-      withAntigravityChatBackend(
+      accountRows(
         ctx.runtime,
         target,
         await (await getAntigravityAccountService(target)).removeAccount(accountId)

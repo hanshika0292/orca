@@ -52,7 +52,7 @@ export async function startAcpStructuredSession(
           }
         })
         children.starts.track(attempt, connection)
-        deps.spec.launchGate?.retain(connection)
+        deps.spec.launchGate?.retain(connection, true)
       },
       onExit: (session) => {
         if (session && children.sessions.get(sessionId) === session) {

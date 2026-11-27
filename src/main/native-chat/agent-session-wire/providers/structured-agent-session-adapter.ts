@@ -73,6 +73,9 @@ export type AgentSessionAcquisition = {
   accountHome?: AgentSessionAccountHome
   /** The home a chat with no conversation yet moved to at this launch, which it keeps. */
   movedAccountHome?: AgentSessionAccountHome
+  /** Which saved account this child launched on, when the home alone can't say (see
+   *  `launchAccountKey`). */
+  accountKey?: string
 }
 
 /** The host creates the command’s running turn; the child translator ends it and writes its result. */
@@ -290,6 +293,9 @@ export type StructuredAgentSessionAdapter = AdapterControls & {
   }): (() => boolean) | undefined
   /** Undefined without a live child; then the host conservatively treats unanswered sends as held. */
   heldSends?(sessionId: string): ReadonlySet<string> | undefined
+  /** The account key a start of this session would record now; a running child whose
+   *  `accountKey` differs launched on another account. Null when the agent has none. */
+  launchAccountKey?(sessionId: string): string | null
   /** Prove this acquisition’s root alive for lease renewal; absent/false falls back to PID probing. */
   holdsLiveProviderProcess?(sessionId: string, acquisitionGeneration: string): boolean
   /** This exact acquisition's ending before the host committed it ready, as the adapter reads it. */

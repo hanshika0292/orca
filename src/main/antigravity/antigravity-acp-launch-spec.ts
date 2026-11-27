@@ -33,6 +33,7 @@ import { agentSessionSetupFor } from '../../shared/agent-session/lifecycle/launc
 import { deliverAntigravityInstructions } from '../acp/launch/acp-instructions'
 import { scrubAgyOrcaHomeEnvironment } from './antigravity-agy-orca-home-environment'
 import { ANTIGRAVITY_LAUNCH_GATE } from './antigravity-chat-account'
+import { AGY_HOST_LOGIN } from './agy-login-revision'
 import { discardAgyListingSession } from './agy-listing-session-discard'
 import { AGY_ACP_CLIENT_INFO } from './antigravity-acp-runtime-probe'
 import {
@@ -132,6 +133,8 @@ const ANTIGRAVITY_AGY_LAUNCH_SPEC = {
   // `session/load` replays the whole conversation, which the chat already holds.
   resumePreference: 'resume',
   launchGate: ANTIGRAVITY_LAUNCH_GATE,
+  // Saved accounts swap agy's one login, which Orca's homes share too, so the home can't tell them apart.
+  launchAccount: AGY_HOST_LOGIN,
   keepsEverySession: true
 } satisfies AcpLaunchSpec
 

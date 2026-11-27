@@ -55,7 +55,19 @@ export function formatAntigravityAccounts(state: AntigravityAccountState): strin
       (account) =>
         `  ${account.id}  ${account.email ?? account.subject ?? account.id}${
           account.id === state.activeAccountId ? ' (active)' : ''
-        }`
+        }${antigravitySwitchNote(state, account.id)}`
     )
     .join('\n')}`
+}
+
+/** A switch the host still runs answers early; `orca account list` shows when it ends. */
+function antigravitySwitchNote(state: AntigravityAccountState, accountId: string): string {
+  const { switching, switchFailed } = state
+  if (switching?.accountId === accountId) {
+    const count = switching.waitingForChats
+    return count === 0
+      ? ' (switching)'
+      : ` (switching after ${count} ${count === 1 ? 'chat finishes' : 'chats finish'})`
+  }
+  return switchFailed?.accountId === accountId ? ` (not switched: ${switchFailed.message})` : ''
 }

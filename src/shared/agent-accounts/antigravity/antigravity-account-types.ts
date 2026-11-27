@@ -31,6 +31,12 @@ export type AntigravityAccountState = {
   /** Host only: new Gemini API key chats run on agy (in a home Orca owns) with the
    *  method and credential saved here. Absent from older hosts, which run them on the server. */
   chatKeyOnAgy?: boolean
+  /** Host only: a switch to `accountId` waits for this many chats' agy to finish and exit before
+   *  it changes agy's login; new chats wait too. Absent from older hosts and when none runs. */
+  switching?: { accountId: string; waitingForChats: number }
+  /** Host only: why the latest switch that answered while still waiting didn't happen; agy kept
+   *  the login it had. Absent from older hosts. */
+  switchFailed?: { accountId: string; message: string }
 }
 
 export const ANTIGRAVITY_CHAT_SIGN_IN_PHASES = [

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Loader2, RefreshCw } from 'lucide-react'
 import { useTranslate } from '@/i18n/use-translate'
 import { AgentIcon } from '@/components/agent/icons/AgentIcon'
@@ -26,6 +26,8 @@ import {
   AntigravityAgyAccountRows,
   type AntigravityAccountAction
 } from './AntigravityAgyAccountRows'
+
+const SWITCH_REREAD_MS = 2_000
 
 export function AntigravityAccountsSection({
   owner,
@@ -163,6 +165,16 @@ export function AntigravityAccountsSection({
       ? (signIn.flow.flowId ?? 'another client')
       : 'idle'
   useOnLaterChange(signedInFlow, reread)
+  // A switch that waits for chats answers early with its progress; the rows read it again until it ends.
+  const switching = state?.switching
+  const readSwitch = useEffectEvent(reread)
+  useEffect(() => {
+    if (!switching) {
+      return
+    }
+    const timer = setTimeout(readSwitch, SWITCH_REREAD_MS)
+    return () => clearTimeout(timer)
+  }, [switching])
   const description = windowsHost
     ? t(
         'accounts.antigravity.descriptionWindows',
