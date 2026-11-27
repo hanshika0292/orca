@@ -54,6 +54,13 @@ export class AgyAccountSwitch {
     return this.switching && this.rows ? this.withProgress(this.rows) : null
   }
 
+  /** Rows another account action read while a switch waits replace the ones it answered with. */
+  noteRows(state: AntigravityAccountState): void {
+    if (this.switching && this.rows) {
+      this.rows = state
+    }
+  }
+
   /** The switch under way, or why the last one that answered early didn't happen. */
   withProgress(state: AntigravityAccountState): AntigravityAccountState {
     if (this.switching) {
@@ -88,11 +95,11 @@ export class AgyAccountSwitch {
     if (this.switching) {
       throw new Error('Antigravity is already switching accounts. Try again after it finishes.')
     }
+    this.failed = null
     // agy already holds it: no login changes, so no chat needs to stop.
     if (active === accountId) {
       return apply()
     }
-    this.failed = null
     const progress = { accountId, waitingForChats: 0 }
     this.switching = progress
     let answered = false

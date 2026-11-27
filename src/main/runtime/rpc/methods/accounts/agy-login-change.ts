@@ -37,7 +37,11 @@ export async function accountRows(
   state: AntigravityAccountState
 ): Promise<AntigravityAccountState> {
   const rows = await withAntigravityChatBackend(runtime, target, state)
-  return target.runtime === 'host' ? AGY_HOST_ACCOUNT_SWITCH.withProgress(rows) : rows
+  if (target.runtime !== 'host') {
+    return rows
+  }
+  AGY_HOST_ACCOUNT_SWITCH.noteRows(rows)
+  return AGY_HOST_ACCOUNT_SWITCH.withProgress(rows)
 }
 
 /** What agy's own login served: the model lists taken with it, the chats running on it, and the
