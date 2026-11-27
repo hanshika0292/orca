@@ -1938,6 +1938,10 @@
         "browserBlockGuidance": "Beende den Browser-Prozess (PID {{pids}}) und versuche es erneut. Sein Server läuft weiter.",
         "browserBlockGuidanceMany": "Beende die Browser-Prozesse (PIDs {{pids}}) und versuche es erneut. Ihre Server laufen weiter.",
         "blocked": "Blockiert"
+      },
+      "action": {
+        "install": "Installieren",
+        "installNow": "{{version}} jetzt installieren"
       }
     }
   },
