@@ -2239,7 +2239,6 @@
       },
       "servers": {
         "readyCount": "{{value0}} ready",
-        "updating": "Updating",
         "updateAll": "Update all",
         "title": "Servers",
         "otherCount": "{{value0}} other",
@@ -2247,7 +2246,11 @@
         "confirmMany": "Restart {{count}} servers?",
         "liveMayDrop": "Live sessions may drop.",
         "sessionsMayDrop": "Sessions may drop",
-        "cancel": "Cancel"
+        "restartCount": "Restart {{count}}?",
+        "restartOne": "Restart?",
+        "updatingCount": "{{value0}} updating",
+        "failedCount": "{{value0}} failed",
+        "failed": "Failed"
       },
       "action": {
         "update": "Update",
