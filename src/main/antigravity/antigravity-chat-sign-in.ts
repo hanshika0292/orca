@@ -59,7 +59,7 @@ function publish(
     return
   }
   const flow = { ...next, flowId: current.id, owner: current.owner, intent: current.intent }
-  antigravityChatSignIn.set({ auth: auth ?? value.auth, flow })
+  antigravityChatSignIn.set({ ...value, auth: auth ?? value.auth, flow })
   if (settled(next.phase)) {
     current.ended.abort()
   }
@@ -235,11 +235,12 @@ export function readAntigravityChatSignInStatus(
   owner: string
 ): accountTypes.AntigravityChatSignInStatus {
   const { value, revision } = antigravityChatSignIn.get()
+  const accountSwitch = value.accountSwitch ? { accountSwitch: { ...value.accountSwitch } } : {}
   if (!value.flow) {
-    return { revision, auth: value.auth, flow: null }
+    return { revision, auth: value.auth, flow: null, ...accountSwitch }
   }
   const { owner: starter, ...state } = value.flow
   const { phase, error } = state
   const flow = starter === owner ? state : { flowId: null, phase, ...(error ? { error } : {}) }
-  return { revision, auth: value.auth, flow }
+  return { revision, auth: value.auth, flow, ...accountSwitch }
 }

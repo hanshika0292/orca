@@ -30,6 +30,8 @@ export function AntigravityAgyAccountRows({
 }): React.JSX.Element {
   const t = useTranslate()
   const signingIn = signIn?.ownFlow === true
+  // A switch waiting for chats refuses every account change until it ends.
+  const locked = busy || Boolean(state?.switching)
   const signInAlert = signIn?.alert ? <ActionError message={signIn.alert} /> : null
   const changed = Boolean(
     state?.selectedAccountId && state.activeAccountId !== state.selectedAccountId
@@ -134,7 +136,7 @@ export function AntigravityAgyAccountRows({
           )
         }
         actions={
-          <Button size="xs" variant="outline" disabled={busy} onClick={() => run('AddCurrent')}>
+          <Button size="xs" variant="outline" disabled={locked} onClick={() => run('AddCurrent')}>
             {t('accounts.antigravity.saveShort', 'Save')}
           </Button>
         }
@@ -149,14 +151,14 @@ export function AntigravityAgyAccountRows({
         title={account.email ?? t('accounts.antigravity.saved', 'Saved Google account')}
         active={active}
         detail={switchDetail(t, state, account.id)}
-        selectDisabled={busy || Boolean(state?.switching)}
+        selectDisabled={locked}
         onSelect={() => run('Select', account.id)}
         actions={
           active ? null : (
             <Button
               variant="ghost"
               size="xs"
-              disabled={busy}
+              disabled={locked}
               onClick={() => run('Remove', account.id)}
             >
               <Trash2 />
@@ -184,7 +186,7 @@ export function AntigravityAgyAccountRows({
             <Button
               size="xs"
               variant="outline"
-              disabled={busy || signIn.signInDisabled}
+              disabled={locked || signIn.signInDisabled}
               onClick={signIn.addAccount}
             >
               <UserPlus />

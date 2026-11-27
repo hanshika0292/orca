@@ -7,6 +7,8 @@ export type AntigravityAccountSummary = {
   updatedAt: number
 }
 
+export type AntigravityAccountSwitchProgress = { accountId: string; waitingForChats: number }
+
 export type AntigravityAccountState = {
   accounts: AntigravityAccountSummary[]
   activeAccountId: string | null
@@ -33,7 +35,7 @@ export type AntigravityAccountState = {
   chatKeyOnAgy?: boolean
   /** Host only: a switch to `accountId` waits for this many chats' agy to finish and exit before
    *  it changes agy's login; new chats wait too. Absent from older hosts and when none runs. */
-  switching?: { accountId: string; waitingForChats: number }
+  switching?: AntigravityAccountSwitchProgress
   /** Host only: why the latest switch that answered while still waiting didn't happen; agy kept
    *  the login it had. Absent from older hosts. */
   switchFailed?: { accountId: string; message: string }
@@ -73,6 +75,9 @@ export type AntigravityChatSignInStatus = {
   auth: AntigravityChatAuth
   /** The latest flow; an ended one stays readable until the next starts. */
   flow: AntigravityChatSignInState | null
+  /** An account switch waiting for chats, pushed as it goes so the account rows read again;
+   *  absent when none runs and from older hosts. */
+  accountSwitch?: AntigravityAccountSwitchProgress
 }
 
 export type AntigravityAccountTarget = {

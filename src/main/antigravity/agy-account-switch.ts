@@ -3,20 +3,28 @@
 // waits: chat starts hold, running turns finish, every chat's agy exits, and only then is the new
 // login written. A turn that never ends gives the switch up after SWITCH_WAIT_MS, changing nothing.
 
-import type { AntigravityAccountState } from '../../shared/agent-accounts/antigravity/antigravity-account-types'
+import type {
+  AntigravityAccountState,
+  AntigravityAccountSwitchProgress
+} from '../../shared/agent-accounts/antigravity/antigravity-account-types'
 import { releaseIdleChatsOnOtherAccount } from '../native-chat/agent-session-wire/host/structured-agent-session-account-switch'
 import type { AcpLaunchGate } from '../acp/launch/acp-launch-gate'
 import { withTimeout } from '../../shared/concurrency/promise-timeout-fallback'
 import { getStructuredAgentSessionHost } from '../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { AGY_HOST_LOGIN, type AgyLoginRevision } from './agy-login-revision'
-import { ANTIGRAVITY_LAUNCH_GATE } from './antigravity-chat-account'
+import {
+  ANTIGRAVITY_LAUNCH_GATE,
+  publishAntigravityAccountSwitch
+} from './antigravity-chat-account'
 import { antigravityChatSignInActive } from './antigravity-chat-sign-in'
 import type { AntigravityAccountService } from './native-account-service'
 
 const SWITCH_WAIT_MS = 5 * 60_000
 const CHECK_MS = 2_000
-// Under the account rows' 20 s call timeout; a longer wait answers with the switch's progress.
-const REPLY_WAIT_MS = 5_000
+// Under the account rows' 20 s call timeout, so older clients get most switches whole; a longer
+// wait answers with the switch's progress.
+const REPLY_WAIT_MS = 12_000
+const SWITCHING = 'Antigravity is switching accounts. Try again after it finishes.'
 
 type SwitchHost = Parameters<typeof releaseIdleChatsOnOtherAccount>[0]
 
@@ -26,6 +34,8 @@ export type AgyAccountSwitchDeps = {
   /** An in-app sign-in that may write agy's login itself. */
   signInActive?: () => boolean
   host: () => SwitchHost
+  /** Pushes the waiting switch's progress (null once it ends) to every surface following it. */
+  publish?: (progress: AntigravityAccountSwitchProgress | null) => void
   now?: () => number
   waitMs?: number
   checkMs?: number
@@ -39,16 +49,22 @@ function stillRunning(count: number): string {
 }
 
 export class AgyAccountSwitch {
-  private switching: { accountId: string; waitingForChats: number } | null = null
+  private switching: AntigravityAccountSwitchProgress | null = null
   private failed: { accountId: string; message: string } | null = null
   /** The rows the switch answered with, read again only once it ends. */
   private rows: AntigravityAccountState | null = null
 
   constructor(private readonly deps: AgyAccountSwitchDeps) {}
 
-  /** A switch waits for chats; an in-app sign-in must not race its write. */
+  /** A switch waits for chats; a sign-in, or an account added or removed, must not race it. */
   running(): boolean {
     return this.switching !== null
+  }
+
+  assertNotSwitching(): void {
+    if (this.switching) {
+      throw new Error(SWITCHING)
+    }
   }
 
   /** While a switch that answered early waits, its rows with its progress: re-reading them would
@@ -57,19 +73,16 @@ export class AgyAccountSwitch {
     return this.switching && this.rows ? this.withProgress(this.rows) : null
   }
 
-  /** Rows another account action read while a switch waits replace the ones it answered with. */
-  noteRows(state: AntigravityAccountState): void {
-    if (this.switching && this.rows) {
-      this.rows = state
-    }
-  }
-
-  /** The switch under way, or why the last one that answered early didn't happen. */
+  /** The switch under way, or why the last one that answered early didn't happen (until agy
+   *  holds that account after all). */
   withProgress(state: AntigravityAccountState): AntigravityAccountState {
+    const { switching: _switching, switchFailed: _failed, ...rows } = state
     if (this.switching) {
-      return { ...state, switching: { ...this.switching } }
+      return { ...rows, switching: { ...this.switching } }
     }
-    return this.failed ? { ...state, switchFailed: { ...this.failed } } : state
+    return this.failed && this.failed.accountId !== rows.activeAccountId
+      ? { ...rows, switchFailed: { ...this.failed } }
+      : rows
   }
 
   /** `moved` runs, before any chat starts again, once agy holds the selected login. Answers with
@@ -98,9 +111,7 @@ export class AgyAccountSwitch {
       return state
     }
     const active = (await service.listAccounts()).activeAccountId
-    if (this.switching) {
-      throw new Error('Antigravity is already switching accounts. Try again after it finishes.')
-    }
+    this.assertNotSwitching()
     if (signingIn()) {
       throw new Error('Antigravity is signing in. Select an account after it finishes.')
     }
@@ -111,6 +122,7 @@ export class AgyAccountSwitch {
     }
     const progress = { accountId, waitingForChats: 0 }
     this.switching = progress
+    this.deps.publish?.({ ...progress })
     let answered = false
     let marker: ReturnType<AgyLoginRevision['beginSwitch']> | null = null
     const done = this.deps.gate
@@ -118,6 +130,7 @@ export class AgyAccountSwitch {
         marker = this.deps.login.beginSwitch()
         await this.drain(running, marker.committed, (count) => {
           progress.waitingForChats = count
+          this.deps.publish?.({ ...progress })
         })
       }, apply)
       .catch((error: unknown) => {
@@ -134,18 +147,25 @@ export class AgyAccountSwitch {
         if (this.switching === progress) {
           this.switching = null
           this.rows = null
+          this.deps.publish?.(null)
         }
       })
     const replyMs = this.deps.replyMs ?? REPLY_WAIT_MS
     let timer: ReturnType<typeof setTimeout> | undefined
     const early = await Promise.race([
       done,
-      new Promise<null>((resolve) => (timer = setTimeout(() => resolve(null), replyMs)))
+      new Promise<null>(
+        (resolve) =>
+          (timer = setTimeout(() => {
+            // From here a failure is reported with the rows, not to this caller.
+            answered = true
+            resolve(null)
+          }, replyMs))
+      )
     ]).finally(() => clearTimeout(timer))
     if (early) {
       return early
     }
-    answered = true
     done.catch(() => {})
     const rows = await service.listAccounts()
     if (this.switching === progress) {
@@ -178,7 +198,7 @@ export class AgyAccountSwitch {
         throw new Error(
           chats > 0
             ? `Antigravity didn't switch accounts: ${stillRunning(chats)}, then select the account again.`
-            : "Antigravity didn't switch accounts: its model list didn't stop. Try again."
+            : "Antigravity didn't switch accounts: one of its background tasks didn't stop. Try again."
         )
       }
       await new Promise((resolve) => setTimeout(resolve, this.deps.checkMs ?? CHECK_MS))
@@ -191,5 +211,6 @@ export const AGY_HOST_ACCOUNT_SWITCH = new AgyAccountSwitch({
   gate: ANTIGRAVITY_LAUNCH_GATE,
   login: AGY_HOST_LOGIN,
   signInActive: antigravityChatSignInActive,
-  host: getStructuredAgentSessionHost
+  host: getStructuredAgentSessionHost,
+  publish: publishAntigravityAccountSwitch
 })

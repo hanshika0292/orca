@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Loader2, RefreshCw } from 'lucide-react'
 import { useTranslate } from '@/i18n/use-translate'
 import { AgentIcon } from '@/components/agent/icons/AgentIcon'
@@ -26,8 +26,6 @@ import {
   AntigravityAgyAccountRows,
   type AntigravityAccountAction
 } from './AntigravityAgyAccountRows'
-
-const SWITCH_REREAD_MS = 2_000
 
 export function AntigravityAccountsSection({
   owner,
@@ -165,20 +163,11 @@ export function AntigravityAccountsSection({
       ? (signIn.flow.flowId ?? 'another client')
       : 'idle'
   useOnLaterChange(signedInFlow, reread)
-  // A switch that waits for chats answers early with its progress; the rows read it again until it ends.
-  const switching = Boolean(state?.switching)
-  // Each read, answered or failed, schedules the next while the switch waits.
-  const [switchReads, setSwitchReads] = useState(0)
-  const readSwitch = useEffectEvent(() =>
-    run('List', undefined, true).finally(() => setSwitchReads((reads) => reads + 1))
-  )
-  useEffect(() => {
-    if (!switching) {
-      return
-    }
-    const timer = setTimeout(() => void readSwitch(), SWITCH_REREAD_MS)
-    return () => clearTimeout(timer)
-  }, [switching, switchReads])
+  // A switch waiting for chats is pushed as it goes (and again on reconnect): the rows follow it.
+  const accountSwitch = signIn.known
+    ? `${signIn.accountSwitch?.accountId ?? ''}:${signIn.accountSwitch?.waitingForChats ?? ''}`
+    : null
+  useOnLaterChange(accountSwitch, reread)
   const description = windowsHost
     ? t(
         'accounts.antigravity.descriptionWindows',
@@ -226,7 +215,10 @@ export function AntigravityAccountsSection({
           <AntigravityChatAuthRows owner={owner} onSaved={reread} />
         ) : null}
         <AntigravityAgyAccountRows
-          state={state}
+          // The pushed progress shows while the select that started it is still answering.
+          state={
+            state && signIn.accountSwitch ? { ...state, switching: signIn.accountSwitch } : state
+          }
           error={error}
           busy={busy}
           windowsHost={windowsHost}

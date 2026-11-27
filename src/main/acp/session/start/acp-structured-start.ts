@@ -69,10 +69,17 @@ export async function startAcpStructuredSession(
       throw new Error('closed while starting')
     }
     children.sessions.set(sessionId, session)
+    if (attempt.connection) {
+      deps.spec.launchGate?.settle(attempt.connection, true)
+    }
     return acquisition
   } catch (error) {
     children.endings.retire(sessionId, generation)
     const { connection } = attempt
+    // No chat runs this process: an account switch may stop it.
+    if (connection) {
+      deps.spec.launchGate?.settle(connection, false)
+    }
     if (connection && error instanceof AcpConnectionClosedError) {
       // Wait briefly for process exit so startup failures include final diagnostics.
       await waitForAcpExit(connection, graceMs(), attempt.signal)

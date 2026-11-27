@@ -18,6 +18,7 @@ import {
 } from '../../../../antigravity/antigravity-host-acp'
 import { AGY_HOST_ACCOUNT_SWITCH } from '../../../../antigravity/agy-account-switch'
 import { AGY_HOST_LOGIN } from '../../../../antigravity/agy-login-revision'
+import { getAntigravityAccountService } from '../../../../antigravity/native-account-host'
 import { sharedAgyLaunchHome, withAntigravityChatBackend } from './antigravity-chat-backend'
 
 function antigravityOrcaHomeCatalogFingerprints(): string[] {
@@ -28,6 +29,14 @@ function antigravityOrcaHomeCatalogFingerprints(): string[] {
   ].map((accountHome) =>
     agentModelCatalogFingerprint({ agent: 'antigravity', accountHome, wslDistro: null })
   )
+}
+
+/** The saved accounts, for adding or removing one; refused while a switch here waits on them. */
+export function accountsForChange(target: AntigravityAccountTarget) {
+  if (target.runtime === 'host') {
+    AGY_HOST_ACCOUNT_SWITCH.assertNotSwitching()
+  }
+  return getAntigravityAccountService(target)
 }
 
 /** The account rows' answer on this host, with the account switch under way. */
@@ -43,7 +52,6 @@ export async function accountRows(
   const rows = AGY_HOST_ACCOUNT_SWITCH.running()
     ? state
     : await withAntigravityChatBackend(runtime, target, state)
-  AGY_HOST_ACCOUNT_SWITCH.noteRows(rows)
   return AGY_HOST_ACCOUNT_SWITCH.withProgress(rows)
 }
 

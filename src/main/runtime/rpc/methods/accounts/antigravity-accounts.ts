@@ -13,7 +13,7 @@ import {
 import { AntigravityChatAuthConfigSchema } from '../../../../../shared/agent-accounts/antigravity/antigravity-chat-auth-config'
 import { getAntigravityAccountService } from '../../../../antigravity/native-account-host'
 import { readAgySignInInBackground } from './antigravity-chat-backend'
-import { accountRows, forgetAgyLogin } from './agy-login-change'
+import { accountRows, accountsForChange, forgetAgyLogin } from './agy-login-change'
 import { AGY_HOST_ACCOUNT_SWITCH } from '../../../../antigravity/agy-account-switch'
 import {
   lastAntigravityAgySignedOut,
@@ -143,11 +143,7 @@ export const ANTIGRAVITY_ACCOUNT_METHODS = [
     permission: 'accounts-admin',
     params: AntigravityAccountTargetParams,
     handler: async (target, ctx) =>
-      accountRows(
-        ctx.runtime,
-        target,
-        await (await getAntigravityAccountService(target)).addCurrentAccount()
-      )
+      accountRows(ctx.runtime, target, await (await accountsForChange(target)).addCurrentAccount())
   }),
   defineMethod({
     name: 'accounts.antigravitySelect',
@@ -173,7 +169,7 @@ export const ANTIGRAVITY_ACCOUNT_METHODS = [
       accountRows(
         ctx.runtime,
         target,
-        await (await getAntigravityAccountService(target)).removeAccount(accountId)
+        await (await accountsForChange(target)).removeAccount(accountId)
       )
   }),
   defineMethod({
@@ -183,9 +179,7 @@ export const ANTIGRAVITY_ACCOUNT_METHODS = [
     handler: async ({ intent }, ctx) => {
       const owner = signInOwner(ctx)
       // A switch waiting for chats would write its account over this sign-in's.
-      if (AGY_HOST_ACCOUNT_SWITCH.running()) {
-        throw new Error('Antigravity is switching accounts. Sign in after it finishes.')
-      }
+      AGY_HOST_ACCOUNT_SWITCH.assertNotSwitching()
       // Adding an account replaces agy's login, so the one it has is saved first; a failed save
       // refuses the sign-in rather than lose that login.
       if (intent === 'changeAccount') {

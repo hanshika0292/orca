@@ -23,13 +23,12 @@ async function switchRig(options: { waitMs?: number; signInActive?: () => boolea
   const login = new AgyLoginRevision()
   const exits: (() => void)[] = []
   const chat = { alive: true, busy: true, passes: 0 }
-  gate.retain(
-    {
-      close: async () => true,
-      onExit: (listener) => exits.push(listener)
-    },
-    true
-  )
+  const chatProcess = {
+    close: async () => true,
+    onExit: (listener: () => void) => exits.push(listener)
+  }
+  gate.retain(chatProcess, true)
+  gate.settle(chatProcess, true)
   // The host's own retirement stops an agent only between turns, as an account switch asks it to.
   const host = {
     loadedSessionIds: () => {
@@ -151,4 +150,41 @@ it('keeps the login of an in-app sign-in that began while the switch waited', as
   )
   expect(rig.order).toEqual(['agy exited'])
   expect(rig.h.getNative()).toBe(credential('a'))
+})
+
+it('writes only after a stopped background agy is seen to exit, asking it again meanwhile', async () => {
+  const rig = await switchRig()
+  rig.chat.busy = false
+  // A model listing whose stop reports delivered while agy is still alive.
+  const exited: (() => void)[] = []
+  let closes = 0
+  rig.gate.retain({
+    close: async () => {
+      closes += 1
+      return true
+    },
+    onExit: (listener) => exited.push(listener)
+  })
+  await rig.select()
+  await vi.waitFor(() => expect(closes).toBeGreaterThan(1))
+  expect(rig.h.getNative()).toBe(credential('a'))
+  exited.forEach((exit) => exit())
+  await vi.waitFor(() => expect(rig.h.getNative()).toBe(credential('b')))
+})
+
+it('stops a chat start that failed, which no chat owns, instead of waiting on it', async () => {
+  const rig = await switchRig()
+  rig.chat.busy = false
+  const exited: (() => void)[] = []
+  const failedStart = {
+    close: async () => {
+      exited.forEach((exit) => exit())
+      return true
+    },
+    onExit: (listener: () => void) => exited.push(listener)
+  }
+  rig.gate.retain(failedStart, true)
+  rig.gate.settle(failedStart, false)
+  await rig.select()
+  await vi.waitFor(() => expect(rig.h.getNative()).toBe(credential('b')))
 })
