@@ -2839,8 +2839,7 @@
         "blocked": "Bloqueado"
       },
       "action": {
-        "install": "Instalar",
-        "installNow": "Instalar {{version}} agora"
+        "checkHeldNow": "Verificar {{version}} agora. Sua configuração de atraso continua a mesma."
       }
     }
   },
