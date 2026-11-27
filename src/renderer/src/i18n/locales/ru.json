@@ -1458,6 +1458,25 @@
         "files": "Из файлов этого репозитория",
         "open": "Открыть {{file}}"
       }
+    },
+    "about": {
+      "servers": {
+        "readyCount": "Готово: {{value0}}",
+        "updateAll": "Обновить все",
+        "title": "Серверы",
+        "otherCount": "Других: {{value0}}",
+        "confirmOne": "Перезапустить {{name}}?",
+        "confirmMany": "Перезапустить серверы ({{count}})?",
+        "liveMayDrop": "Активные сессии могут прерваться.",
+        "sessionsMayDrop": "Сессии могут прерваться",
+        "restartCount": "Перезапустить {{count}}?",
+        "restartOne": "Перезапустить?",
+        "updateOne": "Обновить {{name}}",
+        "retryOne": "Повторить для {{name}}",
+        "updatingCount": "Обновляется: {{value0}}",
+        "failedCount": "Ошибок: {{value0}}",
+        "failed": "Ошибка"
+      }
     }
   },
   "menu": {
