@@ -11,6 +11,8 @@ export function botTemplateCategoryLabel(category: BotTemplateCategory, t: Trans
       return t('bots.templates.category.support', 'Support & triage')
     case 'planning':
       return t('bots.templates.category.planning', 'Planning & docs')
+    case 'content':
+      return t('bots.templates.category.content', 'Content & social')
     case 'ops':
       return t('bots.templates.category.ops', 'Ops')
     case 'personal':

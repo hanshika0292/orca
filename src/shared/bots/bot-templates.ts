@@ -7,6 +7,7 @@ import { BOT_CREATED_KICKOFF } from '../bot-created-kickoff'
 import type { BotPackageConnector } from './bot-package'
 import { BOT_SHARED_SETUP_FILE } from './bot-shared-from'
 import { BOT_TEMPLATES_CODING } from './bot-template-catalog/coding'
+import { BOT_TEMPLATES_CONTENT } from './bot-template-catalog/content'
 import { BOT_TEMPLATES_OPS, BOT_TEMPLATES_PERSONAL } from './bot-template-catalog/ops-personal'
 import { BOT_TEMPLATES_PLANNING } from './bot-template-catalog/planning'
 import { BOT_TEMPLATES_RELEASES } from './bot-template-catalog/releases'
@@ -20,6 +21,7 @@ export const BOT_TEMPLATE_CATEGORIES = [
   'releases',
   'support',
   'planning',
+  'content',
   'ops',
   'personal'
 ] as const
@@ -39,7 +41,10 @@ export const BOT_TEMPLATE_SKILLS = [
   'status-brief',
   'spec-format',
   'incident-timeline',
-  'workspace-hygiene'
+  'workspace-hygiene',
+  'brand-voice',
+  'channel-formats',
+  'idea-bank'
 ] as const
 export type BotTemplateSkill = (typeof BOT_TEMPLATE_SKILLS)[number]
 
@@ -101,6 +106,7 @@ export const BOT_TEMPLATES: readonly BotTemplate[] = [
   ...BOT_TEMPLATES_RELEASES,
   ...BOT_TEMPLATES_SUPPORT,
   ...BOT_TEMPLATES_PLANNING,
+  ...BOT_TEMPLATES_CONTENT,
   ...BOT_TEMPLATES_OPS,
   ...BOT_TEMPLATES_PERSONAL
 ]

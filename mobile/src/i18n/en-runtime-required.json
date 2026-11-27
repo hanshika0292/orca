@@ -455,10 +455,13 @@
     },
     "templateSkills": {
       "lines": {
+        "brand-voice": "Learn the voice from posts your owner liked; never invent facts or post for them.",
         "bug-reproduction": "Write down the exact steps that show the bug before looking for its cause.",
+        "channel-formats": "The shape of a good post on X, LinkedIn, carousels, short videos and newsletters.",
         "ci-failure-triage": "Tell a flaky check from a real failure or broken infrastructure, and find the commit that started it.",
         "dependency-upgrade": "Upgrade one group at a time, read the changelog, run the tests, one pull request each.",
         "feedback-themes": "Group feedback into themes with counts and short quotes; link existing issues.",
+        "idea-bank": "Ideas from trusted sources, each with a hook and a link, kept in one file.",
         "incident-timeline": "Keep a timestamped timeline, then draft a blameless write-up.",
         "issue-triage": "Label, find duplicates, ask for missing repro details in one comment.",
         "pr-review-checklist": "Read a diff for behaviour changes, missing tests and risky edits; cite each finding.",
@@ -557,6 +560,42 @@
           }
         },
         "watches": "Check runs in the repos you pick"
+      },
+      "content-plan": {
+        "does": "Plans the week’s posts by channel and theme in a calendar file, then drafts each day’s posts that morning. Never posts.",
+        "example1": "This week: 3 LinkedIn posts, 2 carousels, 1 newsletter, across your 3 themes.",
+        "example2": "Today’s LinkedIn draft is ready: 6 lines, hook first.",
+        "firstChat": "Asks which channels you post on, how often, and the three or four themes you post about, then writes this week’s plan. It never posts.",
+        "line": "Plans the week’s posts, then drafts each one on its day.",
+        "name": "Weekly content plan",
+        "reports": "Here, Mondays at 9 AM and weekdays at 10 AM",
+        "schedules": {
+          "daily-drafts": {
+            "what": "Today’s posts",
+            "when": "Weekdays at 10 AM"
+          },
+          "weekly-plan": {
+            "what": "This week’s plan",
+            "when": "Mondays at 9 AM"
+          }
+        },
+        "watches": "Your themes, your ideas and what you tell it worked"
+      },
+      "content-repurposer": {
+        "does": "Drafts an X post or thread, a LinkedIn post, carousel slides or a short-video script from one source, in your voice. Never posts.",
+        "events": {
+          "content-shared": {
+            "action": "Draft posts from it",
+            "trigger": "When someone posts in a content channel"
+          }
+        },
+        "example1": "From your podcast notes: a LinkedIn post (5 lines) and an X thread (6 posts).",
+        "example2": "Carousel: 7 slides, hook on slide 1, caption separate.",
+        "firstChat": "Asks which channels you post on and for two or three posts you liked, then turns the next link, notes or transcript you send into a draft for each channel. It never posts.",
+        "line": "Turns one link, note or transcript into a post for each channel you use.",
+        "name": "Content repurposer",
+        "reports": "Here, when you send it something",
+        "watches": "Links, notes and transcripts you send it"
       },
       "dependency-updates": {
         "does": "Lists advisories and outdated packages, most urgent first; upgrades one group per pull request once agreed.",
@@ -658,6 +697,22 @@
           }
         },
         "watches": "Slack threads and Linear comments"
+      },
+      "idea-scout": {
+        "does": "Finds what’s new in your niche, picks five ideas with a hook and a source link each, and keeps the ones you like in an idea bank.",
+        "example1": "1. “The pricing page test nobody runs” (from a founder’s thread, linked).",
+        "example2": "5 ideas today, 2 skipped as already in your bank.",
+        "firstChat": "Asks for your niche and five to ten sources you trust, such as sites, newsletters and communities, then brings this morning’s ideas, each with a hook and its link.",
+        "line": "Five post ideas each weekday, from sources you trust.",
+        "name": "Idea scout",
+        "reports": "Here, weekdays at 8 AM",
+        "schedules": {
+          "morning-ideas": {
+            "what": "Five post ideas",
+            "when": "Weekdays at 8 AM"
+          }
+        },
+        "watches": "The websites and communities you name"
       },
       "incident-notes": {
         "does": "Keeps a timestamped timeline, then drafts a blameless write-up.",

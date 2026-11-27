@@ -9,6 +9,7 @@ import {
   FileText,
   LayoutGrid,
   Link2,
+  Megaphone,
   MessagesSquare,
   Plus,
   Rocket,
@@ -51,6 +52,7 @@ const CATEGORY_ICONS = {
   releases: Rocket,
   support: MessagesSquare,
   planning: FileText,
+  content: Megaphone,
   ops: Wrench,
   personal: UserRoundCheck
 }

@@ -152,6 +152,12 @@ function translatedSkillName(skill: BotTemplateSkill, t: Translate): string {
       return t('bots.templateSkills.incidentTimeline', 'incident-timeline')
     case 'workspace-hygiene':
       return t('bots.templateSkills.workspaceHygiene', 'workspace-hygiene')
+    case 'brand-voice':
+      return t('bots.templateSkills.brandVoice', 'brand-voice')
+    case 'channel-formats':
+      return t('bots.templateSkills.channelFormats', 'channel-formats')
+    case 'idea-bank':
+      return t('bots.templateSkills.ideaBank', 'idea-bank')
   }
 }
 
