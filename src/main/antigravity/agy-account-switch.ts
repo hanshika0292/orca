@@ -38,12 +38,20 @@ function stillRunning(count: number): string {
 export class AgyAccountSwitch {
   private switching: { accountId: string; waitingForChats: number } | null = null
   private failed: { accountId: string; message: string } | null = null
+  /** The rows the switch answered with, read again only once it ends. */
+  private rows: AntigravityAccountState | null = null
 
   constructor(private readonly deps: AgyAccountSwitchDeps) {}
 
   /** A switch waits for chats; an in-app sign-in must not race its write. */
   running(): boolean {
     return this.switching !== null
+  }
+
+  /** While a switch that answered early waits, its rows with its progress: re-reading them would
+   *  ask the keyring, and maybe agy, every poll. */
+  waitingRows(): AntigravityAccountState | null {
+    return this.switching && this.rows ? this.withProgress(this.rows) : null
   }
 
   /** The switch under way, or why the last one that answered early didn't happen. */
@@ -90,9 +98,9 @@ export class AgyAccountSwitch {
     let answered = false
     let marker: ReturnType<AgyLoginRevision['beginSwitch']> | null = null
     const done = this.deps.gate
-      .runAfterChats(async (runningChats) => {
+      .runAfterChats(async (running) => {
         marker = this.deps.login.beginSwitch()
-        await this.drain(runningChats, marker.committed, (count) => {
+        await this.drain(running, marker.committed, (count) => {
           progress.waitingForChats = count
         })
       }, apply)
@@ -109,6 +117,7 @@ export class AgyAccountSwitch {
         marker?.end()
         if (this.switching === progress) {
           this.switching = null
+          this.rows = null
         }
       })
     const replyMs = this.deps.replyMs ?? REPLY_WAIT_MS
@@ -122,12 +131,16 @@ export class AgyAccountSwitch {
     }
     answered = true
     done.catch(() => {})
-    return this.withProgress(await service.listAccounts())
+    const rows = await service.listAccounts()
+    if (this.switching === progress) {
+      this.rows = rows
+    }
+    return this.withProgress(rows)
   }
 
   /** Stops each chat's agy as soon as its turn and owed work allow, until none runs. */
   private async drain(
-    runningChats: () => number,
+    running: () => { chats: number; others: number },
     committed: () => boolean,
     report: (count: number) => void
   ): Promise<void> {
@@ -140,14 +153,16 @@ export class AgyAccountSwitch {
         Math.max(0, deadline - now()),
         undefined
       )
-      const running = runningChats()
-      report(running)
-      if (running === 0) {
+      const { chats, others } = running()
+      report(chats)
+      if (chats + others === 0) {
         return
       }
       if (now() >= deadline) {
         throw new Error(
-          `Antigravity didn't switch accounts: ${stillRunning(running)}, then select the account again.`
+          chats > 0
+            ? `Antigravity didn't switch accounts: ${stillRunning(chats)}, then select the account again.`
+            : "Antigravity didn't switch accounts: its model list didn't stop. Try again."
         )
       }
       await new Promise((resolve) => setTimeout(resolve, this.deps.checkMs ?? CHECK_MS))

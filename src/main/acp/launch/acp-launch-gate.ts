@@ -89,10 +89,11 @@ export class AcpLaunchGate {
   }
 
   /** Like `run` for a change that waits for chats instead of stopping them: chat starts wait for
-   *  it, chat starts under way finish, and `drain` returns once it has seen `runningChats()` (chat
-   *  processes and chat starts) reach 0. Everything else started here is stopped before `work`. */
+   *  it, chat starts under way finish, other starts are cancelled, and `drain` returns once it has
+   *  seen both counts reach 0 (`chats`: chat processes and chat starts; `others`: cancelled starts
+   *  not yet ended). Everything else started here is stopped before `work`. */
   async runAfterChats<T>(
-    drain: (runningChats: () => number) => Promise<void>,
+    drain: (running: () => { chats: number; others: number }) => Promise<void>,
     work: () => Promise<T>
   ): Promise<T> {
     this.begin()
@@ -104,9 +105,10 @@ export class AcpLaunchGate {
           controller.abort()
         }
       }
-      await drain(
-        () => this.chats.size + [...this.starts.values()].filter((entry) => entry.chat).length
-      )
+      await drain(() => {
+        const chatStarts = [...this.starts.values()].filter((entry) => entry.chat).length
+        return { chats: this.chats.size + chatStarts, others: this.starts.size - chatStarts }
+      })
       await this.stopRetained()
       return await work()
     } finally {

@@ -22,7 +22,7 @@ async function switchRig(options: { waitMs?: number } = {}) {
   const gate = new AcpLaunchGate('Antigravity')
   const login = new AgyLoginRevision()
   const exits: (() => void)[] = []
-  const chat = { alive: true, busy: true, checks: 0 }
+  const chat = { alive: true, busy: true, passes: 0 }
   gate.retain(
     {
       close: async () => true,
@@ -32,11 +32,13 @@ async function switchRig(options: { waitMs?: number } = {}) {
   )
   // The host's own retirement stops an agent only between turns, as an account switch asks it to.
   const host = {
-    loadedSessionIds: () => (chat.alive ? ['chat'] : []),
+    loadedSessionIds: () => {
+      chat.passes += 1
+      return chat.alive ? ['chat'] : []
+    },
     sessionAgent: () => 'antigravity',
     childAccountHome: () => (chat.alive ? HOME : undefined),
     releaseOffAccount: async (_id: string, committed: () => boolean) => {
-      chat.checks += 1
       if (chat.alive && !chat.busy && committed()) {
         chat.alive = false
         order.push('agy exited')
@@ -68,8 +70,8 @@ it("writes the new login only after a busy chat's turn ends and its agy exits, h
     entered.leave()
   })
   // Several checks later the turn still runs: the start waits and nothing is written.
-  const checked = rig.chat.checks
-  await vi.waitFor(() => expect(rig.chat.checks).toBeGreaterThan(checked + 2))
+  const checked = rig.chat.passes
+  await vi.waitFor(() => expect(rig.chat.passes).toBeGreaterThan(checked + 2))
   expect(launchedOn).toBeNull()
   expect(rig.order).toEqual([])
   expect(rig.h.getNative()).toBe(credential('a'))
@@ -105,13 +107,17 @@ it("gives the switch up without touching agy's login when a turn outlasts the wa
   expect(rig.login.atLaunch()).toBe('0')
 })
 
-it('stops a model listing already under way instead of waiting for it', async () => {
+it('cancels a model listing under way and writes once it has ended', async () => {
   const rig = await switchRig()
   const listing = rig.gate.enter(undefined)
   rig.chat.busy = false
   await rig.select()
+  await vi.waitFor(() => expect(listing.signal.aborted).toBe(true))
+  const checked = rig.chat.passes
+  await vi.waitFor(() => expect(rig.chat.passes).toBeGreaterThan(checked + 2))
+  expect(rig.h.getNative()).toBe(credential('a'))
+  listing.leave()
   await vi.waitFor(() => expect(rig.h.getNative()).toBe(credential('b')))
-  expect(listing.signal.aborted).toBe(true)
 })
 
 it('keeps a login agy signed in to while the switch waited', async () => {

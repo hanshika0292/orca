@@ -131,6 +131,7 @@ export const ANTIGRAVITY_ACCOUNT_METHODS = [
     permission: 'workspace',
     params: AntigravityAccountTargetParams,
     handler: async (target, ctx) =>
+      (target.runtime === 'host' ? AGY_HOST_ACCOUNT_SWITCH.waitingRows() : null) ??
       accountRows(
         ctx.runtime,
         target,
