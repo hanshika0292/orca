@@ -22,7 +22,7 @@ async function switchRig(options: { waitMs?: number } = {}) {
   const gate = new AcpLaunchGate('Antigravity')
   const login = new AgyLoginRevision()
   const exits: (() => void)[] = []
-  const chat = { alive: true, busy: true }
+  const chat = { alive: true, busy: true, checks: 0 }
   gate.retain(
     {
       close: async () => true,
@@ -36,6 +36,7 @@ async function switchRig(options: { waitMs?: number } = {}) {
     sessionAgent: () => 'antigravity',
     childAccountHome: () => (chat.alive ? HOME : undefined),
     releaseOffAccount: async (_id: string, committed: () => boolean) => {
+      chat.checks += 1
       if (chat.alive && !chat.busy && committed()) {
         chat.alive = false
         order.push('agy exited')
@@ -66,7 +67,9 @@ it("writes the new login only after a busy chat's turn ends and its agy exits, h
     launchedOn = rig.login.atLaunch()
     entered.leave()
   })
-  await new Promise((resolve) => setTimeout(resolve, 30))
+  // Several checks later the turn still runs: the start waits and nothing is written.
+  const checked = rig.chat.checks
+  await vi.waitFor(() => expect(rig.chat.checks).toBeGreaterThan(checked + 2))
   expect(launchedOn).toBeNull()
   expect(rig.order).toEqual([])
   expect(rig.h.getNative()).toBe(credential('a'))
@@ -87,8 +90,9 @@ it("gives the switch up without touching agy's login when a turn outlasts the wa
   const rig = await switchRig({ waitMs: 40 })
   expect((await rig.select()).switching?.accountId).toBe(rig.b)
 
+  const rows = await rig.h.service.listAccounts()
   await vi.waitFor(() =>
-    expect(rig.accountSwitch.withProgress({} as never).switchFailed?.message).toContain(
+    expect(rig.accountSwitch.withProgress(rows).switchFailed?.message).toContain(
       '1 Antigravity chat is still running'
     )
   )
