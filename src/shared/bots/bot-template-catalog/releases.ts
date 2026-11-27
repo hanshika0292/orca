@@ -48,6 +48,46 @@ export const BOT_TEMPLATES_RELEASES: readonly BotTemplate[] = [
     example: ['Draft for 1.5: 4 new, 9 fixed, 2 changed.', 'Biggest change: bots can share skills.']
   },
   {
+    id: 'launch-posts',
+    category: 'releases',
+    name: 'Launch posts',
+    line: 'Drafts posts about what you shipped, for X, LinkedIn and your community.',
+    firstChat:
+      'Asks for two or three posts you liked to learn your voice, then drafts posts about this week’s merged pull requests. It never posts.',
+    mascot: 'A1',
+    watches: 'Pull requests merged in the repos you pick',
+    does: 'Drafts one post per channel about changes users will notice, in your voice. Never posts.',
+    reports: 'Here, Fridays at 3 PM and when an announce pull request merges',
+    connectors: ['github'],
+    schedules: [
+      {
+        id: 'weekly-posts',
+        when: 'Fridays at 3 PM',
+        what: 'Posts about this week’s changes',
+        rrule: '0 15 * * 5',
+        prompt:
+          'Find the pull requests merged this week in the repos my owner picked. Pick up to three changes users will notice and draft posts about them with the launch-posts skill. Never post them anywhere.'
+      }
+    ],
+    events: [
+      {
+        id: 'announce-merged',
+        name: 'When a pull request labeled announce merges: draft its posts',
+        source: 'github',
+        event: 'pr_merged',
+        prompt:
+          'A pull request merged. If it has no announce label, stop without posting. Otherwise draft posts about it with the launch-posts skill and post the drafts here. Never post them anywhere else.'
+      }
+    ],
+    skills: ['launch-posts'],
+    needsSetup:
+      'No X or LinkedIn connector: you copy the drafts and post them yourself. GitHub can’t filter merges by label yet, so the bot checks each merged pull request for the announce label and skips the rest. Each one costs a turn.',
+    example: [
+      'X: “Bots can share skills now. Teach one bot, and every bot gets it.” (#4121)',
+      '3 drafts for this week: X, LinkedIn and Discord. 9 internal changes skipped.'
+    ]
+  },
+  {
     id: 'ci-failures',
     category: 'releases',
     name: 'CI failures',

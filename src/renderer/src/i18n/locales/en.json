@@ -29599,6 +29599,29 @@
         "example1": "Draft for 1.5: 4 new, 9 fixed, 2 changed.",
         "example2": "Biggest change: bots can share skills."
       },
+      "launch-posts": {
+        "name": "Launch posts",
+        "line": "Drafts posts about what you shipped, for X, LinkedIn and your community.",
+        "firstChat": "Asks for two or three posts you liked to learn your voice, then drafts posts about this week’s merged pull requests. It never posts.",
+        "watches": "Pull requests merged in the repos you pick",
+        "does": "Drafts one post per channel about changes users will notice, in your voice. Never posts.",
+        "reports": "Here, Fridays at 3 PM and when an announce pull request merges",
+        "needsSetup": "No X or LinkedIn connector: you copy the drafts and post them yourself. GitHub can’t filter merges by label yet, so the bot checks each merged pull request for the announce label and skips the rest. Each one costs a turn.",
+        "example1": "X: “Bots can share skills now. Teach one bot, and every bot gets it.” (#4121)",
+        "example2": "3 drafts for this week: X, LinkedIn and Discord. 9 internal changes skipped.",
+        "schedules": {
+          "weekly-posts": {
+            "when": "Fridays at 3 PM",
+            "what": "Posts about this week’s changes"
+          }
+        },
+        "events": {
+          "announce-merged": {
+            "trigger": "When a pull request labeled announce merges",
+            "action": "Draft its posts"
+          }
+        }
+      },
       "ci-failures": {
         "name": "CI failures",
         "line": "Explains failed checks and keeps a list of flaky ones.",
@@ -30913,6 +30936,7 @@
       "specFormat": "spec-format",
       "incidentTimeline": "incident-timeline",
       "workspaceHygiene": "workspace-hygiene",
+      "launchPosts": "launch-posts",
       "lines": {
         "pr-review-checklist": "Read a diff for behaviour changes, missing tests and risky edits; cite each finding.",
         "bug-reproduction": "Write down the exact steps that show the bug before looking for its cause.",
@@ -30926,7 +30950,8 @@
         "status-brief": "Changed, blocked, needs a decision: a brief in under ten lines.",
         "spec-format": "A one-page spec: problem, decision, scope, open questions.",
         "incident-timeline": "Keep a timestamped timeline, then draft a blameless write-up.",
-        "workspace-hygiene": "When a workspace is done or abandoned, and what to check before removing it."
+        "workspace-hygiene": "When a workspace is done or abandoned, and what to check before removing it.",
+        "launch-posts": "Posts about changes users will notice: one change each, every claim sourced, never posted for you."
       }
     },
     "notices": {
