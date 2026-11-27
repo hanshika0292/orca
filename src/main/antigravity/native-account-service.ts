@@ -87,8 +87,13 @@ export class AntigravityAccountService {
     })
   }
 
-  /** `switched` runs once agy holds another login than before and the switch is saved. */
-  selectAccount(id: string, switched?: () => void): Promise<AntigravityAccountState> {
+  /** `switched` runs once agy holds another login than before and the switch is saved;
+   *  `beforeWrite` may refuse, right before agy's login is written. */
+  selectAccount(
+    id: string,
+    switched?: () => void,
+    beforeWrite?: () => void
+  ): Promise<AntigravityAccountState> {
     return this.serialize(async () => {
       const { vault, current } = await this.reconcile(id)
       const selected = vault.accounts.find((account) => account.id === id)
@@ -97,6 +102,7 @@ export class AntigravityAccountService {
       }
       const switching = !current || !this.matches(selected, current)
       if (switching) {
+        beforeWrite?.()
         await this.backend.write(selected.credentials, current?.contents ?? null)
       }
       const readback = await this.backend.read()

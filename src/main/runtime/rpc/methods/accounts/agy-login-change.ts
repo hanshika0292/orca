@@ -36,10 +36,13 @@ export async function accountRows(
   target: AntigravityAccountTarget,
   state: AntigravityAccountState
 ): Promise<AntigravityAccountState> {
-  const rows = await withAntigravityChatBackend(runtime, target, state)
   if (target.runtime !== 'host') {
-    return rows
+    return withAntigravityChatBackend(runtime, target, state)
   }
+  // Reading the chat backend can start agy outside the launch gate, on the login being replaced.
+  const rows = AGY_HOST_ACCOUNT_SWITCH.running()
+    ? state
+    : await withAntigravityChatBackend(runtime, target, state)
   AGY_HOST_ACCOUNT_SWITCH.noteRows(rows)
   return AGY_HOST_ACCOUNT_SWITCH.withProgress(rows)
 }

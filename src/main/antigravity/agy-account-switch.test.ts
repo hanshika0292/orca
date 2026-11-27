@@ -7,7 +7,7 @@ import { credential, harness } from './native-account-test-fixtures'
 const HOME = { variable: 'GEMINI_HOME', path: '/home/dev/.gemini' }
 
 /** agy holds account a; b is saved too. One chat's agy runs a turn on a. */
-async function switchRig(options: { waitMs?: number } = {}) {
+async function switchRig(options: { waitMs?: number; signInActive?: () => boolean } = {}) {
   const h = harness(credential('b'))
   await h.service.addCurrentAccount()
   h.setNative(credential('a'))
@@ -50,6 +50,7 @@ async function switchRig(options: { waitMs?: number } = {}) {
     gate,
     login,
     host: () => host,
+    ...(options.signInActive ? { signInActive: options.signInActive } : {}),
     checkMs: 5,
     replyMs: 20,
     waitMs: options.waitMs ?? 60_000
@@ -125,6 +126,22 @@ it('keeps a login agy signed in to while the switch waited', async () => {
   expect((await rig.select()).switching?.accountId).toBe(rig.b)
   // An in-app sign-in finishes on another account before the busy turn ends.
   rig.login.changed()
+  rig.chat.busy = false
+  const rows = await rig.h.service.listAccounts()
+  await vi.waitFor(() =>
+    expect(rig.accountSwitch.withProgress(rows).switchFailed?.message).toContain(
+      'agy signed in to another account'
+    )
+  )
+  expect(rig.order).toEqual(['agy exited'])
+  expect(rig.h.getNative()).toBe(credential('a'))
+})
+
+it('keeps the login of an in-app sign-in that began while the switch waited', async () => {
+  let signingIn = false
+  const rig = await switchRig({ signInActive: () => signingIn })
+  expect((await rig.select()).switching?.accountId).toBe(rig.b)
+  signingIn = true
   rig.chat.busy = false
   const rows = await rig.h.service.listAccounts()
   await vi.waitFor(() =>

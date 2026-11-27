@@ -65,6 +65,11 @@ function publish(
   }
 }
 
+/** An in-app sign-in is running or still stopping: agy may write its new login at any moment. */
+export function antigravityChatSignInActive(): boolean {
+  return active !== null
+}
+
 export function startAntigravityChatSignIn(
   host: AntigravityChatSignInHost,
   owner: string,

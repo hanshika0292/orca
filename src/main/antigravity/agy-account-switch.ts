@@ -10,6 +10,7 @@ import { withTimeout } from '../../shared/concurrency/promise-timeout-fallback'
 import { getStructuredAgentSessionHost } from '../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { AGY_HOST_LOGIN, type AgyLoginRevision } from './agy-login-revision'
 import { ANTIGRAVITY_LAUNCH_GATE } from './antigravity-chat-account'
+import { antigravityChatSignInActive } from './antigravity-chat-sign-in'
 import type { AntigravityAccountService } from './native-account-service'
 
 const SWITCH_WAIT_MS = 5 * 60_000
@@ -22,6 +23,8 @@ type SwitchHost = Parameters<typeof releaseIdleChatsOnOtherAccount>[0]
 export type AgyAccountSwitchDeps = {
   gate: Pick<AcpLaunchGate, 'runAfterChats'>
   login: Pick<AgyLoginRevision, 'beginSwitch' | 'atLaunch'>
+  /** An in-app sign-in that may write agy's login itself. */
+  signInActive?: () => boolean
   host: () => SwitchHost
   now?: () => number
   waitMs?: number
@@ -76,16 +79,19 @@ export class AgyAccountSwitch {
     accountId: string,
     moved: () => void
   ): Promise<AntigravityAccountState> {
+    const signingIn = this.deps.signInActive ?? (() => false)
     const login = this.deps.login.atLaunch()
-    const apply = async () => {
-      // A sign-in that finished while this waited is newer than this pick: keep it.
-      if (this.deps.login.atLaunch() !== login) {
+    // A sign-in under way or finished meanwhile is newer than this pick: keep its login.
+    const unchanged = (): void => {
+      if (signingIn() || this.deps.login.atLaunch() !== login) {
         throw new Error(
           'agy signed in to another account while Orca waited to switch. Select the account again.'
         )
       }
+    }
+    const apply = async () => {
       let switched = false
-      const state = await service.selectAccount(accountId, () => (switched = true))
+      const state = await service.selectAccount(accountId, () => (switched = true), unchanged)
       if (switched) {
         moved()
       }
@@ -94,6 +100,9 @@ export class AgyAccountSwitch {
     const active = (await service.listAccounts()).activeAccountId
     if (this.switching) {
       throw new Error('Antigravity is already switching accounts. Try again after it finishes.')
+    }
+    if (signingIn()) {
+      throw new Error('Antigravity is signing in. Select an account after it finishes.')
     }
     this.failed = null
     // agy already holds it: no login changes, so no chat needs to stop.
@@ -181,5 +190,6 @@ export class AgyAccountSwitch {
 export const AGY_HOST_ACCOUNT_SWITCH = new AgyAccountSwitch({
   gate: ANTIGRAVITY_LAUNCH_GATE,
   login: AGY_HOST_LOGIN,
+  signInActive: antigravityChatSignInActive,
   host: getStructuredAgentSessionHost
 })
