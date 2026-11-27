@@ -166,15 +166,19 @@ export function AntigravityAccountsSection({
       : 'idle'
   useOnLaterChange(signedInFlow, reread)
   // A switch that waits for chats answers early with its progress; the rows read it again until it ends.
-  const switching = state?.switching
-  const readSwitch = useEffectEvent(reread)
+  const switching = Boolean(state?.switching)
+  // Each read, answered or failed, schedules the next while the switch waits.
+  const [switchReads, setSwitchReads] = useState(0)
+  const readSwitch = useEffectEvent(() =>
+    run('List', undefined, true).finally(() => setSwitchReads((reads) => reads + 1))
+  )
   useEffect(() => {
     if (!switching) {
       return
     }
-    const timer = setTimeout(readSwitch, SWITCH_REREAD_MS)
+    const timer = setTimeout(() => void readSwitch(), SWITCH_REREAD_MS)
     return () => clearTimeout(timer)
-  }, [switching])
+  }, [switching, switchReads])
   const description = windowsHost
     ? t(
         'accounts.antigravity.descriptionWindows',

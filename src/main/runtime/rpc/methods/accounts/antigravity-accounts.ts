@@ -181,6 +181,10 @@ export const ANTIGRAVITY_ACCOUNT_METHODS = [
     params: AntigravityChatSignInStartParams,
     handler: async ({ intent }, ctx) => {
       const owner = signInOwner(ctx)
+      // A switch waiting for chats would write its account over this sign-in's.
+      if (AGY_HOST_ACCOUNT_SWITCH.running()) {
+        throw new Error('Antigravity is switching accounts. Sign in after it finishes.')
+      }
       // Adding an account replaces agy's login, so the one it has is saved first; a failed save
       // refuses the sign-in rather than lose that login.
       if (intent === 'changeAccount') {

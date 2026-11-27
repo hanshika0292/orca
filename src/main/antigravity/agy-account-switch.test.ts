@@ -104,3 +104,28 @@ it("gives the switch up without touching agy's login when a turn outlasts the wa
   entered.leave()
   expect(rig.login.atLaunch()).toBe('0')
 })
+
+it('stops a model listing already under way instead of waiting for it', async () => {
+  const rig = await switchRig()
+  const listing = rig.gate.enter(undefined)
+  rig.chat.busy = false
+  await rig.select()
+  await vi.waitFor(() => expect(rig.h.getNative()).toBe(credential('b')))
+  expect(listing.signal.aborted).toBe(true)
+})
+
+it('keeps a login agy signed in to while the switch waited', async () => {
+  const rig = await switchRig()
+  expect((await rig.select()).switching?.accountId).toBe(rig.b)
+  // An in-app sign-in finishes on another account before the busy turn ends.
+  rig.login.changed()
+  rig.chat.busy = false
+  const rows = await rig.h.service.listAccounts()
+  await vi.waitFor(() =>
+    expect(rig.accountSwitch.withProgress(rows).switchFailed?.message).toContain(
+      'agy signed in to another account'
+    )
+  )
+  expect(rig.order).toEqual(['agy exited'])
+  expect(rig.h.getNative()).toBe(credential('a'))
+})

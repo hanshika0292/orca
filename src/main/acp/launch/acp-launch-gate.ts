@@ -5,11 +5,13 @@ import { AgentSessionPreSpawnError } from '../../native-chat/agent-session-wire/
 import { abortSignalReason } from '../../../shared/concurrency/abort-signal-reason'
 import type { ProviderAcquisitionConnection } from '../../provider-process/provider-acquisition-starts'
 
+type GateEntry = { left: Promise<void>; chat: boolean }
+
 export class AcpLaunchGate {
   private operating = false
   /** Settles when an operation that holds chat starts (rather than refusing them) ends. */
   private held: Promise<void> | null = null
-  private readonly starts = new Map<AbortController, Promise<void>>()
+  private readonly starts = new Map<AbortController, GateEntry>()
   private readonly retained = new Set<ProviderAcquisitionConnection>()
   private readonly chats = new Set<ProviderAcquisitionConnection>()
   private readonly refusal: string
@@ -19,7 +21,7 @@ export class AcpLaunchGate {
   }
 
   /** Refuses starts during an operation and aborts existing starts when one begins. */
-  enter(signal: AbortSignal | undefined): { signal: AbortSignal; leave: () => void } {
+  enter(signal: AbortSignal | undefined, chat = false): { signal: AbortSignal; leave: () => void } {
     if (this.operating) {
       throw new AgentSessionPreSpawnError(new Error(this.refusal), {
         reason: 'accountSwitchInProgress'
@@ -27,7 +29,7 @@ export class AcpLaunchGate {
     }
     const controller = new AbortController()
     const left = Promise.withResolvers<void>()
-    this.starts.set(controller, left.promise)
+    this.starts.set(controller, { left: left.promise, chat })
     return {
       signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal,
       leave: () => {
@@ -56,7 +58,7 @@ export class AcpLaunchGate {
       }
     }
     abandoned()
-    return this.enter(signal)
+    return this.enter(signal, true)
   }
 
   /** Retain spawned children even after acquisition finishes, before their chats are loaded. */
@@ -73,44 +75,52 @@ export class AcpLaunchGate {
 
   /** Stop starts, live chats and retained root processes before running setup changes. */
   async run<T>(stopLive: () => Promise<void>, work: () => Promise<T>): Promise<T> {
-    return this.operate(true, stopLive, work)
-  }
-
-  /** Like `run` for a change that waits for chats instead of stopping them: chat starts wait for
-   *  it, starts under way finish, and `drain` returns once it has seen `runningChats()` reach 0.
-   *  Every other process started here is stopped before `work`. */
-  async runAfterChats<T>(
-    drain: (runningChats: () => number) => Promise<void>,
-    work: () => Promise<T>
-  ): Promise<T> {
-    return this.operate(false, () => drain(() => this.chats.size), work, Promise.withResolvers())
-  }
-
-  private async operate<T>(
-    abortStarts: boolean,
-    stopLive: () => Promise<void>,
-    work: () => Promise<T>,
-    holdStarts?: PromiseWithResolvers<void>
-  ): Promise<T> {
-    if (this.operating) {
-      throw new Error(this.refusal)
-    }
-    this.operating = true
-    this.held = holdStarts?.promise ?? null
+    this.begin()
     try {
       const starts = [...this.starts]
-      if (abortStarts) {
-        starts.forEach(([controller]) => controller.abort())
-      }
-      await Promise.all(starts.map(([, left]) => left))
+      starts.forEach(([controller]) => controller.abort())
+      await Promise.all(starts.map(([, entry]) => entry.left))
       await stopLive()
       await this.stopRetained()
       return await work()
     } finally {
       this.operating = false
-      this.held = null
-      holdStarts?.resolve()
     }
+  }
+
+  /** Like `run` for a change that waits for chats instead of stopping them: chat starts wait for
+   *  it, chat starts under way finish, and `drain` returns once it has seen `runningChats()` (chat
+   *  processes and chat starts) reach 0. Everything else started here is stopped before `work`. */
+  async runAfterChats<T>(
+    drain: (runningChats: () => number) => Promise<void>,
+    work: () => Promise<T>
+  ): Promise<T> {
+    this.begin()
+    const released = Promise.withResolvers<void>()
+    this.held = released.promise
+    try {
+      for (const [controller, entry] of this.starts) {
+        if (!entry.chat) {
+          controller.abort()
+        }
+      }
+      await drain(
+        () => this.chats.size + [...this.starts.values()].filter((entry) => entry.chat).length
+      )
+      await this.stopRetained()
+      return await work()
+    } finally {
+      this.operating = false
+      this.held = null
+      released.resolve()
+    }
+  }
+
+  private begin(): void {
+    if (this.operating) {
+      throw new Error(this.refusal)
+    }
+    this.operating = true
   }
 
   private async stopRetained(): Promise<void> {

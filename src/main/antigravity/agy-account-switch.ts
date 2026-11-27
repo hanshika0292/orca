@@ -21,7 +21,7 @@ type SwitchHost = Parameters<typeof releaseIdleChatsOnOtherAccount>[0]
 
 export type AgyAccountSwitchDeps = {
   gate: Pick<AcpLaunchGate, 'runAfterChats'>
-  login: Pick<AgyLoginRevision, 'beginSwitch'>
+  login: Pick<AgyLoginRevision, 'beginSwitch' | 'atLaunch'>
   host: () => SwitchHost
   now?: () => number
   waitMs?: number
@@ -41,6 +41,11 @@ export class AgyAccountSwitch {
 
   constructor(private readonly deps: AgyAccountSwitchDeps) {}
 
+  /** A switch waits for chats; an in-app sign-in must not race its write. */
+  running(): boolean {
+    return this.switching !== null
+  }
+
   /** The switch under way, or why the last one that answered early didn't happen. */
   withProgress(state: AntigravityAccountState): AntigravityAccountState {
     if (this.switching) {
@@ -56,7 +61,14 @@ export class AgyAccountSwitch {
     accountId: string,
     moved: () => void
   ): Promise<AntigravityAccountState> {
+    const login = this.deps.login.atLaunch()
     const apply = async () => {
+      // A sign-in that finished while this waited is newer than this pick: keep it.
+      if (this.deps.login.atLaunch() !== login) {
+        throw new Error(
+          'agy signed in to another account while Orca waited to switch. Select the account again.'
+        )
+      }
       let switched = false
       const state = await service.selectAccount(accountId, () => (switched = true))
       if (switched) {
