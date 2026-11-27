@@ -2266,6 +2266,7 @@
         "checkForUpdates": "Check for updates"
       },
       "channel": {
+        "unknownVersion": "Orca {{version}} isn't a release build, so its channel can't be changed here.",
         "running": "Running",
         "title": "Channel",
         "switch": "Switch",
